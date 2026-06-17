@@ -26,6 +26,8 @@ Grab the latest Windows exe from [`dist/ascii_image.exe`](dist/ascii_image.exe) 
 
 Just run `ascii_image.exe` — a file picker will open, then a mode selector. The result prints to the terminal window.
 
+After rendering, a mode switcher appears at the bottom. Press **1–6** to instantly re-render in a different mode, or **Q** / **Enter** to quit.
+
 ### Command line
 
 ```

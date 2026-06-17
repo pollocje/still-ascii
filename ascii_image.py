@@ -280,16 +280,48 @@ def _pick_mode_gui():
     return result['mode']
 
 
+def _build_kwargs(mode, width, invert):
+    return dict(
+        width=width,
+        invert=invert,
+        color=mode in ('color', 'art', 'colorblocks'),
+        sharpen=mode == 'art',
+        contrast=1.3 if mode == 'art' else 1.0,
+        dither=mode in ('art', 'blocks', 'colorblocks'),
+        blocks=mode in ('blocks', 'colorblocks'),
+        halfblock=mode == 'halfblock',
+        edges=mode == 'art',
+    )
+
+
+def _prompt_mode_switch(current_mode):
+    import msvcrt
+    labels = '  '.join(f'[{i+1}] {m}{"  <--" if m == current_mode else ""}' for i, m in enumerate(MODES))
+    print(f'\n{labels}  [Q] quit')
+    print('Switch mode: ', end='', flush=True)
+    while True:
+        key = msvcrt.getch()
+        if key in (b'q', b'Q', b'\r', b'\n', b'\x1b'):
+            return None
+        try:
+            n = int(key.decode())
+            if 1 <= n <= len(MODES):
+                return MODES[n - 1]
+        except (ValueError, UnicodeDecodeError):
+            pass
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Convert an image to ASCII art.',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''modes:
-  ascii      plain ASCII characters (default)
-  color      ASCII with terminal true-color
-  blocks     Unicode block characters (░▒▓█)
-  halfblock  high-res color via half-block (▀) — best in color terminals
-  art        color + edges + dithering + sharpening
+  ascii        plain ASCII characters (default)
+  color        ASCII with terminal true-color
+  blocks       Unicode block characters (░▒▓█)
+  colorblocks  colored Unicode block characters
+  halfblock    high-res color via half-block (▀) — best in color terminals
+  art          color + edges + dithering + sharpening
 
 examples:
   python ascii_image.py photo.jpg
@@ -314,26 +346,23 @@ examples:
 
     width = args.width or shutil.get_terminal_size((100, 40)).columns
     mode = args.mode
+    is_gif = _is_animated_gif(args.image)
 
-    kwargs = dict(
-        width=width,
-        invert=args.invert,
-        color=mode in ('color', 'art', 'colorblocks'),
-        sharpen=mode == 'art',
-        contrast=1.3 if mode == 'art' else 1.0,
-        dither=mode in ('art', 'blocks', 'colorblocks'),
-        blocks=mode in ('blocks', 'colorblocks'),
-        halfblock=mode == 'halfblock',
-        edges=mode == 'art',
-    )
+    while True:
+        kwargs = _build_kwargs(mode, width, args.invert)
+        if is_gif:
+            _play_gif(args.image, **kwargs)
+        else:
+            print(image_to_ascii(args.image, **kwargs))
 
-    if _is_animated_gif(args.image):
-        _play_gif(args.image, **kwargs)
-    else:
-        print(image_to_ascii(args.image, **kwargs))
+        if not gui_mode:
+            break
 
-    if gui_mode:
-        input('\nPress Enter to close...')
+        new_mode = _prompt_mode_switch(mode)
+        if new_mode is None:
+            break
+        mode = new_mode
+        print()
 
 
 if __name__ == '__main__':
