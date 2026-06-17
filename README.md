@@ -55,7 +55,7 @@ ascii_image.exe animation.gif halfblock
 | `colorblocks` | Colored Unicode block characters |
 | `braille` | High-res colored braille characters (⠿) — 2× detail |
 | `halfblock` | High-res color via half-block (▀) — best color fidelity |
-| `retro` | Monochrome green phosphor CRT look |
+| `matrix` | Katakana characters in Matrix green |
 | `art` | Color + edge detection + dithering + sharpening |
 
 ---

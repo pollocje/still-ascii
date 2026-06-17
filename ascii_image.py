@@ -8,8 +8,9 @@ from tkinter import filedialog
 
 ASCII_CHARS = '$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;:,"^`. '
 BLOCK_CHARS = ' ░▒▓█'
+MATRIX_CHARS = 'ﾊﾋｼｷｱｴｶｸｹｺｻｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝｦｧｨｩｪｫｬｭｮｯ9876543210 '
 
-MODES = ('ascii', 'color', 'blocks', 'colorblocks', 'braille', 'halfblock', 'retro', 'art')
+MODES = ('ascii', 'color', 'blocks', 'colorblocks', 'braille', 'halfblock', 'matrix', 'art')
 
 
 def _luma(r, g, b):
@@ -145,18 +146,15 @@ def _render_braille(img, width, color, contrast, invert):
     return '\n'.join(lines)
 
 
-def _render_retro(img, width, contrast, sharpen, invert, amber=False):
+def _render_matrix(img, width, contrast, invert):
     if contrast != 1.0:
         img = ImageEnhance.Contrast(img).enhance(contrast)
-    if sharpen:
-        img = img.filter(ImageFilter.UnsharpMask(radius=1, percent=150, threshold=2))
     orig_w, orig_h = img.size
     height = max(1, int(width * orig_h / orig_w * 0.45))
     img_resized = img.resize((width, height), Image.LANCZOS)
     pixels_luma = [_luma(r, g, b) for r, g, b in img_resized.convert('RGB').getdata()]
-    chars = ASCII_CHARS[::-1] if invert else ASCII_CHARS
+    chars = MATRIX_CHARS[::-1] if invert else MATRIX_CHARS
     n = len(chars) - 1
-    br, bg, bb = (255, 176, 0) if amber else (0, 220, 70)
     lines = []
     for i in range(height):
         row = []
@@ -164,20 +162,20 @@ def _render_retro(img, width, contrast, sharpen, invert, amber=False):
             luma = pixels_luma[i * width + j]
             ch = chars[max(0, min(n, int(luma / 255 * n)))]
             scale = luma / 255
-            row.append(f'\033[38;2;{int(br*scale)};{int(bg*scale)};{int(bb*scale)}m{ch}\033[0m')
+            row.append(f'\033[38;2;{int(0*scale)};{int(220*scale)};{int(70*scale)}m{ch}\033[0m')
         lines.append(''.join(row))
     return '\n'.join(lines)
 
 
 def _frame_to_ascii(img, width=100, invert=False, color=False, sharpen=False,
                     contrast=1.0, gamma=1.0, dither=False, blocks=False,
-                    halfblock=False, edges=False, braille=False, retro=False):
+                    halfblock=False, edges=False, braille=False, matrix=False):
     if halfblock:
         return _render_halfblock(img, width, contrast, sharpen)
     if braille:
         return _render_braille(img, width, color, contrast, invert)
-    if retro:
-        return _render_retro(img, width, contrast, sharpen, invert)
+    if matrix:
+        return _render_matrix(img, width, contrast, invert)
 
     orig_w, orig_h = img.size
     height = max(1, int(width * orig_h / orig_w * 0.45))
@@ -200,7 +198,7 @@ def _frame_to_ascii(img, width=100, invert=False, color=False, sharpen=False,
     if edges:
         gx_list, gy_list = _sobel(pixels_rgb, width, height)
         mags = [math.sqrt(gx * gx + gy * gy) for gx, gy in zip(gx_list, gy_list)]
-        threshold = sorted(mags)[int(len(mags) * 0.80)]
+        threshold = sorted(mags)[int(len(mags) * 0.92)]
         _overlay_edges(grid, gx_list, gy_list, width, height, threshold)
 
     lines = []
@@ -313,7 +311,7 @@ def _pick_mode_gui():
         'colorblocks': 'Colored Unicode block characters',
         'braille':     'High-res colored braille characters (⠿)',
         'halfblock':   'High-res color via half-block (▀)',
-        'retro':       'Monochrome green phosphor CRT look',
+        'matrix':      'Katakana characters in Matrix green',
         'art':         'Color + edges + dithering + sharpening',
     }
 
@@ -350,14 +348,14 @@ def _build_kwargs(mode, width, invert):
         width=width,
         invert=invert,
         color=mode in ('color', 'art', 'colorblocks', 'braille'),
-        sharpen=mode in ('art', 'retro'),
+        sharpen=mode == 'art',
         contrast=1.3 if mode == 'art' else 1.0,
         dither=mode in ('art', 'blocks', 'colorblocks'),
         blocks=mode in ('blocks', 'colorblocks'),
         halfblock=mode == 'halfblock',
         edges=mode == 'art',
         braille=mode == 'braille',
-        retro=mode == 'retro',
+        matrix=mode == 'matrix',
     )
 
 
