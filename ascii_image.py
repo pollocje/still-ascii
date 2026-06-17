@@ -9,7 +9,7 @@ from tkinter import filedialog
 ASCII_CHARS = '$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;:,"^`. '
 BLOCK_CHARS = ' ░▒▓█'
 
-MODES = ('ascii', 'color', 'blocks', 'colorblocks', 'halfblock', 'art')
+MODES = ('ascii', 'color', 'blocks', 'colorblocks', 'braille', 'halfblock', 'retro', 'art')
 
 
 def _luma(r, g, b):
@@ -110,11 +110,74 @@ def _render_halfblock(img, width, contrast, sharpen):
     return '\n'.join(lines)
 
 
+_BRAILLE_DOTS = [
+    (0, 0, 0x01), (0, 1, 0x02), (0, 2, 0x04),
+    (1, 0, 0x08), (1, 1, 0x10), (1, 2, 0x20),
+    (0, 3, 0x40), (1, 3, 0x80),
+]
+
+
+def _render_braille(img, width, color, contrast, invert):
+    if contrast != 1.0:
+        img = ImageEnhance.Contrast(img).enhance(contrast)
+    orig_w, orig_h = img.size
+    height = max(1, int(width * orig_h / orig_w * 0.45))
+    px_w, px_h = width * 2, height * 4
+    pixels = list(img.resize((px_w, px_h), Image.LANCZOS).convert('RGB').getdata())
+
+    lines = []
+    for row in range(height):
+        line = []
+        for col in range(width):
+            bits = 0
+            rs = gs = bs = 0
+            for dc, dr, bit in _BRAILLE_DOTS:
+                r, g, b = pixels[(row * 4 + dr) * px_w + col * 2 + dc]
+                if (_luma(r, g, b) > 128) != invert:
+                    bits |= bit
+                rs += r; gs += g; bs += b
+            ch = chr(0x2800 + bits)
+            if color:
+                line.append(f'\033[38;2;{rs//8};{gs//8};{bs//8}m{ch}\033[0m')
+            else:
+                line.append(ch)
+        lines.append(''.join(line))
+    return '\n'.join(lines)
+
+
+def _render_retro(img, width, contrast, sharpen, invert, amber=False):
+    if contrast != 1.0:
+        img = ImageEnhance.Contrast(img).enhance(contrast)
+    if sharpen:
+        img = img.filter(ImageFilter.UnsharpMask(radius=1, percent=150, threshold=2))
+    orig_w, orig_h = img.size
+    height = max(1, int(width * orig_h / orig_w * 0.45))
+    img_resized = img.resize((width, height), Image.LANCZOS)
+    pixels_luma = [_luma(r, g, b) for r, g, b in img_resized.convert('RGB').getdata()]
+    chars = ASCII_CHARS[::-1] if invert else ASCII_CHARS
+    n = len(chars) - 1
+    br, bg, bb = (255, 176, 0) if amber else (0, 220, 70)
+    lines = []
+    for i in range(height):
+        row = []
+        for j in range(width):
+            luma = pixels_luma[i * width + j]
+            ch = chars[max(0, min(n, int(luma / 255 * n)))]
+            scale = luma / 255
+            row.append(f'\033[38;2;{int(br*scale)};{int(bg*scale)};{int(bb*scale)}m{ch}\033[0m')
+        lines.append(''.join(row))
+    return '\n'.join(lines)
+
+
 def _frame_to_ascii(img, width=100, invert=False, color=False, sharpen=False,
                     contrast=1.0, gamma=1.0, dither=False, blocks=False,
-                    halfblock=False, edges=False):
+                    halfblock=False, edges=False, braille=False, retro=False):
     if halfblock:
         return _render_halfblock(img, width, contrast, sharpen)
+    if braille:
+        return _render_braille(img, width, color, contrast, invert)
+    if retro:
+        return _render_retro(img, width, contrast, sharpen, invert)
 
     orig_w, orig_h = img.size
     height = max(1, int(width * orig_h / orig_w * 0.45))
@@ -248,7 +311,9 @@ def _pick_mode_gui():
         'color':       'ASCII with terminal true-color',
         'blocks':      'Unicode block characters (░▒▓█)',
         'colorblocks': 'Colored Unicode block characters',
+        'braille':     'High-res colored braille characters (⠿)',
         'halfblock':   'High-res color via half-block (▀)',
+        'retro':       'Monochrome green phosphor CRT look',
         'art':         'Color + edges + dithering + sharpening',
     }
 
@@ -284,13 +349,15 @@ def _build_kwargs(mode, width, invert):
     return dict(
         width=width,
         invert=invert,
-        color=mode in ('color', 'art', 'colorblocks'),
-        sharpen=mode == 'art',
+        color=mode in ('color', 'art', 'colorblocks', 'braille'),
+        sharpen=mode in ('art', 'retro'),
         contrast=1.3 if mode == 'art' else 1.0,
         dither=mode in ('art', 'blocks', 'colorblocks'),
         blocks=mode in ('blocks', 'colorblocks'),
         halfblock=mode == 'halfblock',
         edges=mode == 'art',
+        braille=mode == 'braille',
+        retro=mode == 'retro',
     )
 
 

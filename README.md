@@ -53,7 +53,9 @@ ascii_image.exe animation.gif halfblock
 | `color` | ASCII with true-color per character |
 | `blocks` | Unicode block characters (░▒▓█) |
 | `colorblocks` | Colored Unicode block characters |
+| `braille` | High-res colored braille characters (⠿) — 2× detail |
 | `halfblock` | High-res color via half-block (▀) — best color fidelity |
+| `retro` | Monochrome green phosphor CRT look |
 | `art` | Color + edge detection + dithering + sharpening |
 
 ---
