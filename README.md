@@ -50,6 +50,7 @@ ascii_image.exe animation.gif halfblock
 | `ascii` | Plain ASCII characters (default) |
 | `color` | ASCII with true-color per character |
 | `blocks` | Unicode block characters (░▒▓█) |
+| `colorblocks` | Colored Unicode block characters |
 | `halfblock` | High-res color via half-block (▀) — best color fidelity |
 | `art` | Color + edge detection + dithering + sharpening |
 

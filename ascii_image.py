@@ -9,7 +9,7 @@ from tkinter import filedialog
 ASCII_CHARS = '$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;:,"^`. '
 BLOCK_CHARS = ' ░▒▓█'
 
-MODES = ('ascii', 'color', 'blocks', 'halfblock', 'art')
+MODES = ('ascii', 'color', 'blocks', 'colorblocks', 'halfblock', 'art')
 
 
 def _luma(r, g, b):
@@ -244,11 +244,12 @@ def _pick_mode_gui():
              font=('Segoe UI', 11)).pack(pady=(16, 8), padx=20)
 
     descriptions = {
-        'ascii':     'Plain ASCII characters',
-        'color':     'ASCII with terminal true-color',
-        'blocks':    'Unicode block characters (░▒▓█)',
-        'halfblock': 'High-res color via half-block (▀)',
-        'art':       'Color + edges + dithering + sharpening',
+        'ascii':       'Plain ASCII characters',
+        'color':       'ASCII with terminal true-color',
+        'blocks':      'Unicode block characters (░▒▓█)',
+        'colorblocks': 'Colored Unicode block characters',
+        'halfblock':   'High-res color via half-block (▀)',
+        'art':         'Color + edges + dithering + sharpening',
     }
 
     for mode in MODES:
@@ -317,11 +318,11 @@ examples:
     kwargs = dict(
         width=width,
         invert=args.invert,
-        color=mode in ('color', 'art'),
+        color=mode in ('color', 'art', 'colorblocks'),
         sharpen=mode == 'art',
         contrast=1.3 if mode == 'art' else 1.0,
-        dither=mode in ('art', 'blocks'),
-        blocks=mode == 'blocks',
+        dither=mode in ('art', 'blocks', 'colorblocks'),
+        blocks=mode in ('blocks', 'colorblocks'),
         halfblock=mode == 'halfblock',
         edges=mode == 'art',
     )
